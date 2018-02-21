@@ -1,6 +1,4 @@
-/**
-  ******************************************************************************
-  * @file           : main.c
+/* @file           : main.c
   * @brief          : Main program body
   ******************************************************************************
   ** This notice applies to any and all portions of this file
@@ -47,13 +45,13 @@
 #define TRUE 1
 #define GOOD 1
 #define NCMDS 10
+#define FALSE 0
+#define TRUE 1
 #define ESC 27
 #define BCKSP 32
 #define RX_BUFFER_SIZE 128
 #define TX_BUFFER_SIZE 128
 #define VERSION "v1.0 grupo 2 LPI-II DEIC UM2018"
-<<<<<<< HEAD
-=======
 #define PORT_NUM 4
 #define PORT_INCREMENT  0x0400U
 #define GPIO_8_PINS  GPIO_PIN_All & 0x00FFU
@@ -61,27 +59,11 @@
 #define MAX_32_BIT 0xffffffffu
 #define MAX_16_BIT 0xffffu
 #define MAX_8_BIT 0xffu
-#define VERSION "v1.0 grupo 2 LPI-II DEIC UM2018"
->>>>>>> version
-#define HELP "Memory Read: MR addr length\nMemory Write: MW addr length byte\nMakePinInput: MI port pin\nMakePinOnput: MO port pinRead Dig Input: RD port.pin\nWrite Dig Output: WD port.pin\nAnalog Read: RA addr\nE2Write: WE addr byte\nE2Read: RE addr length\n"
-#define ERRORMSG "Invalid command! Check syntax or try a different one\n"
-#define COMMAND 0
-#define ADRESS 1
-#define LENGTH 2
-<<<<<<< HEAD
-
-=======
->>>>>>> version
 
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-<<<<<<< HEAD
-ADC_HandleTypeDef hadc2;
-DMA_HandleTypeDef hdma_adc2;
 
-=======
->>>>>>> version
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
@@ -97,44 +79,23 @@ uint8_t Rx_Buffer[128]={0};
 volatile uint8_t Received_data=0;
 volatile _Bool cmd_flag = FALSE;
 uint8_t command_buffer[128] = {0};
-<<<<<<< HEAD
-typedef struct { char * command; void (*command_function)(void); char delim; } t_cmdstruct;
-=======
 uint8_t last_command_buffer[128] = {0};
 typedef struct { char * command; _Bool(*command_function)(str_arr*); } t_cmdstruct;
->>>>>>> version
 typedef struct { char string_array[5][40]; size_t size; } t_strstruct;
 volatile uint8_t Tx_tail=0;
 volatile uint8_t Tx_head=0;
 uint8_t Tx_Buffer[TX_BUFFER_SIZE]={0};
 volatile _Bool Rx_active_flag = TRUE;
 volatile _Bool Rx_buf_full = FALSE;
-<<<<<<< HEAD
-=======
 int asd = 0;
 int *ptr = &asd;
->>>>>>> version
-uint32_t ADC2Buffer[8] = {0,0,0,0,0,0,0,0};
-uint32_t buffer_analog[8] = {0,0,0,0,0,0,0,0};
-_Bool flag_last_command = FALSE;
-volatile char n_delims = 0;
 
-<<<<<<< HEAD
-typedef struct str_arr
-{
-	char string_array[5][40];
-	size_t size;
-} str_arr;
-=======
->>>>>>> version
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_USART3_UART_Init(void);
-static void MX_ADC2_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -142,23 +103,6 @@ static void processCommand(void);
 static void resetFlags(void);
 static void readRxBuffer(void);
 static _Bool commandSearch(char*);
-<<<<<<< HEAD
-void showErrorMessage();
-void memoryRead();
-void memoryWrite();
-void makePortPinInput();
-void makePortPinOutput();
-void readDigitalInput();
-void writeDigitalOutput();
-void analogRead();
-void sendHelp();
-void sendVersion();
-static _Bool convert_str_hexa_uint32_t(uint32_t* value,char * addr);
-static _Bool convert_str_hexa_uint8_t(uint8_t* value,char * addr);
-static void set_msg(char* msg,uint32_t addr,uint32_t *memory);
-static void put_buffer(char*ch);
-
-=======
 void showErrorMessage(void);
 size_t strlen(const char *s);
 
@@ -188,20 +132,21 @@ static void put_buffer(char*ch);
 static _Bool GPIO_clk_enable(char port_name);
 static char check_GPIO_Port_Addr(uint32_t* addr);
 static void GPIO_config(uint32_t* port_addr, uint32_t mode,uint16_t pin_setting);
->>>>>>> version
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
 static t_cmdstruct cmd_table[] = {
-	{"MR", memoryRead, 2},
-	{"MW", memoryWrite, 3},
-	{"MI", makePortPinInput, 2},
-	{"MO", makePortPinOutput, 2},
-	{"RD", readDigitalInput, 2},
-	{"WD", writeDigitalOutput, 2},
-	{"RA", analogRead, 1},
-	{"?", sendHelp, 0},
-	{"ver", sendVersion, 0}
+	{"MR", memoryRead},
+	{"MW", memoryWrite},
+	{"MI", makePortPinInput},
+	{"MO", makePortPinOutput},
+	{"RD", readDigitalInput},
+	{"WD", writeDigitalOutput},
+	{"RA", analogRead},
+	{"WE", writeE2PROM},
+	{"RE", readE2PROM},
+	{"?", sendHelp},
+	{"VER", sendVersion}
 };
 static t_strstruct str_struct;
 /* USER CODE END 0 */
@@ -236,14 +181,8 @@ str_arr x;
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART3_UART_Init();
-  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
-	//Start DMA and ADC. DMA will convert the value auto to memory
-	HAL_ADC_Start_DMA(&hadc2, ADC2Buffer, 8);
-	HAL_ADC_Start_IT(&hadc2);
-	
 	str_struct.size = 0;
 	unsigned int *ptr = 	(unsigned int *)GPIOA_BASE;
 	printf("Ready for command\n>");
@@ -262,20 +201,18 @@ readDigitalInput(&x);
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		if(cmd_flag == TRUE){    // there is a command to be executed
-			if(flag_last_command == FALSE) processCommand();   // is the command to be repeated? If so, just check buffer for last command
-			if(commandSearch(str_struct.string_array[COMMAND]) == ERROR)   // search for the command, execute it. If it doesnt exist, RIP
+		if(cmd_flag == TRUE){
+			processCommand();
+			if(commandSearch(str_struct.string_array[0]) == ERROR) 
 				showErrorMessage();
 			resetFlags();
 		}
-		HAL_Delay(250);
 
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-
 }
 
 /**
@@ -351,106 +288,6 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 
-/* ADC2 init function */
-static void MX_ADC2_Init(void)
-{
-
-  ADC_ChannelConfTypeDef sConfig;
-
-    /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
-    */
-  hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc2.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc2.Init.ScanConvMode = ENABLE;
-  hadc2.Init.ContinuousConvMode = ENABLE;
-  hadc2.Init.DiscontinuousConvMode = DISABLE;
-  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc2.Init.NbrOfConversion = 8;
-  hadc2.Init.DMAContinuousRequests = ENABLE;
-  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc2) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_4;
-  sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_144CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_5;
-  sConfig.Rank = ADC_REGULAR_RANK_2;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_6;
-  sConfig.Rank = ADC_REGULAR_RANK_3;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_7;
-  sConfig.Rank = ADC_REGULAR_RANK_4;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_8;
-  sConfig.Rank = ADC_REGULAR_RANK_5;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_9;
-  sConfig.Rank = ADC_REGULAR_RANK_6;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_14;
-  sConfig.Rank = ADC_REGULAR_RANK_7;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-    /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-    */
-  sConfig.Channel = ADC_CHANNEL_15;
-  sConfig.Rank = ADC_REGULAR_RANK_8;
-  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
 /* USART3 init function */
 static void MX_USART3_UART_Init(void)
 {
@@ -472,21 +309,6 @@ static void MX_USART3_UART_Init(void)
 
 }
 
-/** 
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void) 
-{
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
-
-}
-
 /** Configure pins as 
         * Analog 
         * Input 
@@ -500,8 +322,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct;
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
@@ -519,16 +339,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void resetFlags(){
-	cmd_flag = FALSE;
-	Rx_active_flag = TRUE;
-	flag_last_command = FALSE;
 	printf("\n>");
+	cmd_flag = 0;
+	//flag_receive = 1;
 }
 void showErrorMessage(){
-	put_buffer(ERRORMSG);
+	printf("Invalid command! Check syntax or try a different one\n");
 }
 void readRxBuffer(){
 	strcpy((char*)command_buffer,(char*)Rx_Buffer);
+	strcpy((char*)last_command_buffer,(char*)Rx_Buffer);
 }
 //Process the commands (parsing)
 void processCommand(){
@@ -544,20 +364,14 @@ void processCommand(){
 		token = strtok(NULL," .");	
 	}
 	str_struct.size = index;
-	n_delims = index - 1;
 }
 
 _Bool commandSearch(char * new_command){
 	size_t index;
 	str_arr arr;
 	for(index = 0; index <= NCMDS; index++){
-<<<<<<< HEAD
-		if((strcmp(cmd_table[index].command, new_command) == 0) && cmd_table[index].delim == n_delims){
-			cmd_table[index].command_function();
-=======
 		if(strcmp(cmd_table[index].command, new_command) == 0){
 			cmd_table[index].command_function(&arr);
->>>>>>> version
 			return GOOD;
 		}
 	}
@@ -723,18 +537,6 @@ void send_MO_msg(uint32_t addr,uint16_t pin_setting)
 	sprintf(msg,"Port %c pins %s set as Output Mode\r\n",port_name ,str_value);
 	put_buffer(msg);
 }
-<<<<<<< HEAD
-void analogRead(){
-	char * value;
-	value = (char*)buffer_analog[(char)str_struct.string_array[1]];
-	put_buffer(value);
-}
-void sendHelp(){
-	put_buffer(HELP);
-}
-void sendVersion(){
-	put_buffer(VERSION);
-=======
 
 void send_MR_msg(uint32_t addr,uint32_t value)
 {
@@ -802,7 +604,6 @@ static char check_GPIO_Port_Addr(uint32_t* addr)
 		port_name +=1;
 	}
 	return NULL;
->>>>>>> version
 }
 
 static _Bool GPIO_clk_enable(char port_name)
@@ -855,19 +656,12 @@ static void GPIO_config(uint32_t* port_addr, uint32_t mode, uint16_t pin_setting
 void  HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	static uint8_t aux_ch = 0;
-	static uint8_t aux_ch_prev = 0;
 	
 	if((*huart).Instance == USART3 && Rx_active_flag == TRUE)
 	{
 		aux_ch = Rx_Buffer[Rx_index];
 		switch(aux_ch)
 		{
-			case (0x4C):
-				cmd_flag = TRUE;
-				Rx_active_flag = FALSE;
-				flag_last_command = TRUE;
-				Rx_index = 0;
-			break;
 			case(0x0D):
 				Rx_Buffer[Rx_index]='\0';
 				Rx_active_flag = FALSE;
@@ -918,8 +712,6 @@ static void put_buffer(char ch[])
 		HAL_UART_Transmit_IT(&huart3,&Tx_Buffer[Tx_head],1);// initiates transmission
 }
 
-<<<<<<< HEAD
-=======
 size_t strlen(const char *s)
 {
 	const char *ss = s;
@@ -932,7 +724,6 @@ size_t strlen(const char *s)
 	return num;
 }
 
->>>>>>> version
 int fputc(int ch,FILE *f)
 {
 	HAL_UART_Transmit(&huart3,(uint8_t*)&ch,1,100);
@@ -977,14 +768,6 @@ _Bool convert_str_hexa_uint8_t(uint8_t* value,char * addr)
 	return FALSE;
 }
 
-<<<<<<< HEAD
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	for(size_t index = 0; index < 8; index++){
-		buffer_analog[index] = ADC2Buffer[index];
-	}
-}
-=======
->>>>>>> version
 /* USER CODE END 4 */
 
 	/**
